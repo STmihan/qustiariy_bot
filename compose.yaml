@@ -1,0 +1,7 @@
+﻿services:
+  bot:
+    build: .
+    volumes:
+      - .:/app
+    env_file:
+      - .env
