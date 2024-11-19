@@ -3,7 +3,7 @@ import 'dotenv/config';
 import fs from 'fs';
 
 const admins = process.env.USERS.split(',');
-const activated_file = process.env.ACTIVATED_FILE;
+const activated_file = "data/activated.txt";
 let activated = [];
 
 function isUserInList(user) {
@@ -22,6 +22,9 @@ function validateUser(ctx) {
 
 function main() {
     const bot = new Telegraf(process.env.BOT_TOKEN);
+    if (!fs.existsSync("data")) {
+        fs.mkdirSync("data");
+    }
     if (fs.existsSync(activated_file)) {
         activated = JSON.parse(fs.readFileSync(activated_file));
     }
