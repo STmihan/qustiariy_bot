@@ -42,13 +42,25 @@ function main() {
     
     bot.command('activate', (ctx) => {
         if (!validateUser(ctx)) {
-            return ctx.reply('Вам не разрешено использовать этого бота!');
+            return ctx.reply('Вам не разрешено использовать эту команду!');
         }
         ctx.reply(`Ваш аккаунт активирован!`);
-        activated.push(ctx.chat.id);
+        if (!activated.includes(ctx.chat.id)) {
+            activated.push(ctx.chat.id);
+        }
         fs.writeFileSync(activated_file, JSON.stringify(activated));
     });
-    
+
+    bot.command('deactivate', (ctx) => {
+        if (!validateUser(ctx)) {
+            return ctx.reply('Вам не разрешено использовать эту команду!');
+        }
+        ctx.reply(`Ваш аккаунт деактивирован!`);
+        activated.splice(activated.indexOf(ctx.chat.id), 1);
+        fs.writeFileSync(activated_file, JSON.stringify(activated));
+    });
+
+
     bot.on('message', async (ctx) => {
         const message = ctx.message.text;
         const attachment = ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice || ctx.message.audio || ctx.message.sticker;
