@@ -6,6 +6,8 @@ const admins = process.env.USERS.split(',');
 const activated_file = "data/activated.txt";
 let activated = [];
 
+const messages_dict = {};
+
 function isUserInList(user) {
     return admins.includes(user);
 }
@@ -28,18 +30,21 @@ function main() {
     if (fs.existsSync(activated_file)) {
         activated = JSON.parse(fs.readFileSync(activated_file));
     }
-    
+
     bot.start((ctx) => ctx.reply('Привет, я бот для отправки анонимных сообщений! Отправь мне сообщение и я его перешлю получателю анонимно!'));
     bot.help((ctx) => {
-        if (!validateUser(ctx)) {
-            ctx.reply('Отправь мне сообщение и я его перешлю получателю анонимно!')
-        } else {
+        if (validateUser(ctx)) {
             ctx.reply('Отправь мне сообщение и я его перешлю получателю анонимно!\n\n' +
                 'Команды:\n' +
-                '/activate - активировать аккаунт админа\n');
+                '/activate - активировать аккаунт админа\n' +
+                '\n' +
+                '\n Чтобы ответить на сообщение, просто перешли его мне!'
+            );
+        } else {
+            ctx.reply('Отправь мне сообщение и я его перешлю получателю анонимно!')
         }
     });
-    
+
     bot.command('activate', (ctx) => {
         if (!validateUser(ctx)) {
             return ctx.reply('Вам не разрешено использовать эту команду!');
@@ -62,21 +67,30 @@ function main() {
 
 
     bot.on('message', async (ctx) => {
-        const message = ctx.message.text;
-        const attachment = ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice || ctx.message.audio || ctx.message.sticker;
-        let username = "Аноним";
+        if (validateUser(ctx)) {
+            const isReply = ctx.message.reply_to_message;
+            if (isReply) {
+                const chat_id = messages_dict[isReply.message_id];
+                if (chat_id) {
+                    await bot.telegram.sendMessage(chat_id, "Ответ на ваше сообщение:");
+                    await bot.telegram.forwardMessage(chat_id, ctx.chat.id, isReply.message_id);
+                    await bot.telegram.sendMessage(chat_id, ctx.message.text);
+                    return;
+                }
+                return;
+            }
+        }
+        let username;
         if (ctx.message.from.username) {
             username = ctx.message.from.username;
         } else {
             username = ctx.message.from.first_name + " " + ctx.message.from.last_name + " (id:" + ctx.message.from.id + ")";
         }
-        
+
         for (let chat_id of activated) {
             await bot.telegram.sendMessage(chat_id, "Новое сообщение от пользователя @" + username);
-            await bot.telegram.sendMessage(chat_id, message);
-            if (attachment) {
-                await bot.telegram.sendCopy(chat_id, attachment);
-            }
+            const newMessage = await bot.telegram.copyMessage(chat_id, ctx.chat.id, ctx.message.message_id);
+            messages_dict[newMessage.message_id] = ctx.chat.id;
         }
     });
 
